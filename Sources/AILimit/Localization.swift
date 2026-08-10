@@ -52,6 +52,8 @@ enum S {
     static let quit = Localized("종료", "Quit")
     static let limitReached = Localized("한도 도달", "Limit reached")
     static let noUsageData = Localized("사용량 정보가 없어요", "No usage data")
+    static let noServicesEnabled = Localized("켜 둔 서비스가 없어요. 설정에서 쓰는 서비스를 켜 주세요.",
+                                             "No services are switched on. Turn one on in Settings.")
     static let setUpCookie = Localized("쿠키 설정하기", "Set up cookie")
     static let openLoginPage = Localized("로그인 페이지 열기", "Open login page")
     static func checkFailed(_ provider: String) -> String {
@@ -293,6 +295,11 @@ enum S {
     static func minutes(_ count: Int) -> String {
         AppLanguage.current == .korean ? "\(count)분" : "\(count) min"
     }
+
+    static let sectionServices = Localized("서비스", "Services")
+    static let servicesHelp = Localized(
+        "쓰지 않는 서비스는 꺼 두세요. 팝오버와 메뉴바에서 빠지고, 갱신할 때 조회도 하지 않습니다. 나중에 다시 켜면 설정은 그대로 남아 있어요.",
+        "Switch off the services you do not use. They leave the popover and the menu bar, and are not queried on refresh. Their settings are kept for when you switch them back on.")
 
     static let sectionCursor = Localized("Cursor", "Cursor")
     static let cursorHelp = Localized(

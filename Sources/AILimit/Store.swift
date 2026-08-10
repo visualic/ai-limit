@@ -34,18 +34,23 @@ final class AppStore: ObservableObject {
         }
     }
 
-    private var timer: Timer?
-
-    /// A refresh the user asked for may probe through an active rate-limit
-    /// backoff; a timer tick may not.
-    private static func providers(userInitiated: Bool) -> [UsageProvider] {
-        [
-            ClaudeProvider(userInitiated: userInitiated),
-            OpenAIProvider(),
-            CursorProvider(userInitiated: userInitiated),
-            QwenProvider(userInitiated: userInitiated),
-        ]
+    /// Services switched off in Settings. Published so a toggle reaches the
+    /// popover and the menu bar at once instead of at the next poll.
+    @Published var disabledProviderIDs: Set<String> {
+        didSet {
+            guard disabledProviderIDs != oldValue else { return }
+            ProviderVisibility.disabledIDs = disabledProviderIDs
+            snapshots.removeAll { disabledProviderIDs.contains($0.id) }
+            saveCache()
+            refresh(userInitiated: true)
+        }
     }
+
+    private var timer: Timer?
+    /// A refresh asked for while one was already running. Timer ticks stay
+    /// drop-on-busy — another tick is due shortly — but a settings change must
+    /// not wait a whole interval to take effect.
+    private var queuedRefresh = false
 
     init() {
         let defaults = UserDefaults.standard
@@ -53,15 +58,33 @@ final class AppStore: ObservableObject {
         refreshInterval = storedInterval > 0 ? storedInterval : 300
         showPercent = defaults.object(forKey: Keys.showPercent) == nil ? true : defaults.bool(forKey: Keys.showPercent)
         language = defaults.string(forKey: Keys.language) ?? ""
+        disabledProviderIDs = ProviderVisibility.disabledIDs
         loadCache()
         scheduleTimer()
         refresh()
     }
 
+    func isEnabled(_ id: String) -> Bool { !disabledProviderIDs.contains(id) }
+
+    func setProvider(_ id: String, enabled: Bool) {
+        if enabled {
+            disabledProviderIDs.remove(id)
+        } else {
+            disabledProviderIDs.insert(id)
+        }
+    }
+
+    var hasEnabledProviders: Bool { ProviderRoster.listing.contains { isEnabled($0.id) } }
+
+    /// A refresh the user asked for may probe through an active rate-limit
+    /// backoff; a timer tick may not.
     func refresh(userInitiated: Bool = false) {
-        guard !isRefreshing else { return }
+        guard !isRefreshing else {
+            if userInitiated { queuedRefresh = true }
+            return
+        }
         isRefreshing = true
-        let providers = Self.providers(userInitiated: userInitiated)
+        let providers = ProviderRoster.enabled(userInitiated: userInitiated)
         Task { [weak self] in
             let results: [(Int, ProviderResult)] = await withTaskGroup(of: (Int, ProviderResult).self) { group in
                 for (index, provider) in providers.enumerated() {
@@ -72,12 +95,18 @@ final class AppStore: ObservableObject {
                 return collected.sorted { $0.0 < $1.0 }
             }
             guard let self else { return }
-            self.snapshots = results.map { index, result in
-                Self.makeSnapshot(provider: providers[index], result: result)
-            }
+            // The set can change mid-flight, so drop anything switched off while
+            // this refresh was in the air rather than resurrecting its card.
+            self.snapshots = results
+                .map { index, result in Self.makeSnapshot(provider: providers[index], result: result) }
+                .filter { self.isEnabled($0.id) }
             self.lastUpdated = Date()
             self.isRefreshing = false
             self.saveCache()
+            if self.queuedRefresh {
+                self.queuedRefresh = false
+                self.refresh(userInitiated: true)
+            }
         }
     }
 
@@ -160,7 +189,8 @@ final class AppStore: ObservableObject {
     private func loadCache() {
         guard let data = try? Data(contentsOf: cacheURL),
               let blob = try? JSONDecoder().decode(CacheBlob.self, from: data) else { return }
-        snapshots = blob.snapshots
+        // A service switched off since the last run must not flash back on launch.
+        snapshots = blob.snapshots.filter { isEnabled($0.id) }
         lastUpdated = blob.lastUpdated
     }
 }

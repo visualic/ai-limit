@@ -6,12 +6,16 @@ if CommandLine.arguments.contains("--check") {
     Task {
         // Non-interactive on purpose: a Keychain approval dialog cannot be
         // answered from a shell-launched process, so asking would just stall.
-        let providers: [UsageProvider] = [
-            ClaudeProvider(), OpenAIProvider(), CursorProvider(), QwenProvider(),
-        ]
-        for provider in providers {
-            let result = await provider.fetch()
+        //
+        // Walks the whole roster, not just the enabled part: a service the user
+        // switched off should be reported as off rather than silently missing.
+        for provider in ProviderRoster.all() {
             print("== \(provider.displayName) (\(provider.id))")
+            guard ProviderVisibility.isEnabled(provider.id) else {
+                print("   OFF: switched off in Settings")
+                continue
+            }
+            let result = await provider.fetch()
             switch result {
             case .ok(let planName, let windows, let limitReached, let note):
                 print("   plan: \(planName ?? "-")  limitReached: \(limitReached)")

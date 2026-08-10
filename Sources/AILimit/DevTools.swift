@@ -723,6 +723,8 @@ enum SelfTest {
             ("claudeExpired", S.claudeExpired), ("openAINoUsage", S.openAINoUsage),
             ("cursorNoIncludedUsage", S.cursorNoIncludedUsage), ("qwenNeedCookie", S.qwenNeedCookie),
             ("settingsWindowTitle", S.settingsWindowTitle), ("menuBarProviderHelp", S.menuBarProviderHelp),
+            ("sectionServices", S.sectionServices), ("servicesHelp", S.servicesHelp),
+            ("noServicesEnabled", S.noServicesEnabled),
             ("qwenAutoHelp", S.qwenAutoHelp), ("qwenManualHelp", S.qwenManualHelp),
             ("importNow", S.importNow), ("save", S.save), ("delete", S.delete),
         ]
@@ -771,6 +773,35 @@ enum SelfTest {
         check("만료된 세션 감지", staleSession.isExpired == true)
         let noExpiry = CursorLocalAuth.Session(cookieHeader: "x", membershipType: nil, expiresAt: nil)
         check("만료 정보 없으면 유효 취급", noExpiry.isExpired == false)
+
+        print("== 안 쓰는 서비스 끄기")
+        let previousDisabled = UserDefaults.standard.stringArray(forKey: Keys.disabledProviders)
+        let roster = ProviderRoster.listing.map(\.id)
+        ProviderVisibility.disabledIDs = []
+        check("기본값은 전부 켜짐", ProviderRoster.enabled().map(\.id) == roster,
+              ProviderRoster.enabled().map(\.id).joined(separator: ","))
+        ProviderVisibility.disabledIDs = ["cursor", "qwen"]
+        // Switched-off services must drop out before the fetch, not after: the
+        // point is to stop querying them at all.
+        check("꺼진 서비스는 조회 대상에서 빠짐",
+              ProviderRoster.enabled().map(\.id) == ["claude", "openai"],
+              ProviderRoster.enabled().map(\.id).joined(separator: ","))
+        check("전체 목록은 그대로 (설정에서 다시 켤 수 있어야 함)",
+              ProviderRoster.listing.count == roster.count)
+        check("설정은 재시작 후에도 유지",
+              ProviderVisibility.disabledIDs == ["cursor", "qwen"])
+        check("모르는 id는 아무 영향 없음", { () -> Bool in
+            ProviderVisibility.disabledIDs = ["not-a-provider"]
+            return ProviderRoster.enabled().map(\.id) == roster
+        }())
+        ProviderVisibility.disabledIDs = Set(roster)
+        check("전부 끄면 조회 대상 없음", ProviderRoster.enabled().isEmpty)
+        ProviderVisibility.disabledIDs = []
+        check("전부 켜면 저장 키를 지움",
+              UserDefaults.standard.object(forKey: Keys.disabledProviders) == nil)
+        if let previousDisabled {
+            UserDefaults.standard.set(previousDisabled, forKey: Keys.disabledProviders)
+        }
 
         print("== 요금제 배지 유지")
         let probe = CursorProvider()

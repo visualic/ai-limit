@@ -15,7 +15,7 @@ struct PopoverView: View {
             header
             Divider()
             if store.snapshots.isEmpty {
-                Text(S.loading.s)
+                Text(store.hasEnabledProviders ? S.loading.s : S.noServicesEnabled.s)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)

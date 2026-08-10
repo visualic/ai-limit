@@ -47,121 +47,137 @@ struct SettingsView: View {
                 }
             }
 
-            Section(S.sectionCursor.s) {
-                Text(S.cursorHelp.s)
+            Section(S.sectionServices.s) {
+                ForEach(ProviderRoster.listing) { provider in
+                    Toggle(provider.displayName, isOn: enabledBinding(provider.id))
+                }
+                Text(S.servicesHelp.s)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-
-                Button {
-                    probeCursorImport()
-                } label: {
-                    Label(S.importNow.s, systemImage: "arrow.down.circle")
-                }
-                .disabled(cursorImporting)
-
-                if let cursorImportMessage {
-                    Text(cursorImportMessage)
-                        .font(.caption)
-                        .foregroundStyle(cursorImportMessage.hasPrefix(S.successPrefix) ? Color.green : Color.red)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Button {
-                    if let url = URL(string: "https://cursor.com/dashboard") { NSWorkspace.shared.open(url) }
-                } label: {
-                    Label(S.openCursorDashboard.s, systemImage: "arrow.up.right.square")
-                }
-                .buttonStyle(.link)
-                .font(.caption)
             }
 
-            Section(S.sectionQwen.s) {
-                Picker(S.region.s, selection: qwenRegionBinding) {
-                    Text(S.regionIntl.s).tag("intl-personal")
-                    Text(S.regionChina.s).tag("cn-personal")
-                }
-
-                Picker(S.cookieSource.s, selection: cookieSourceBinding) {
-                    Text(S.cookieSourceAuto.s).tag("auto")
-                    Text(S.cookieSourceManual.s).tag("manual")
-                }
-
-                if cookieSourceBinding.wrappedValue == "auto" {
-                    Text(S.qwenAutoHelp.s)
+            // The setup sections below belong to one service each, so they follow
+            // its toggle: configuring a service you switched off is dead UI.
+            if store.isEnabled("cursor") {
+                Section(S.sectionCursor.s) {
+                    Text(S.cursorHelp.s)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Button {
-                        probeImport()
+                        probeCursorImport()
                     } label: {
                         Label(S.importNow.s, systemImage: "arrow.down.circle")
                     }
-                    .disabled(importing)
+                    .disabled(cursorImporting)
 
-                    if let importMessage {
-                        Text(importMessage)
+                    if let cursorImportMessage {
+                        Text(cursorImportMessage)
                             .font(.caption)
-                            .foregroundStyle(importMessage.hasPrefix(S.successPrefix) ? Color.green : Color.red)
+                            .foregroundStyle(cursorImportMessage.hasPrefix(S.successPrefix) ? Color.green : Color.red)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+
+                    Button {
+                        if let url = URL(string: "https://cursor.com/dashboard") { NSWorkspace.shared.open(url) }
+                    } label: {
+                        Label(S.openCursorDashboard.s, systemImage: "arrow.up.right.square")
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
                 }
+            }
 
-                Button {
-                    openConsole()
-                } label: {
-                    Label(
-                        cookieSourceBinding.wrappedValue == "auto"
-                            ? S.openTokenPlanBrowser.s
-                            : S.openTokenPlanCopy.s,
-                        systemImage: "arrow.up.right.square"
-                    )
-                }
-                .buttonStyle(.link)
-                .font(.caption)
+            if store.isEnabled("qwen") {
+                Section(S.sectionQwen.s) {
+                    Picker(S.region.s, selection: qwenRegionBinding) {
+                        Text(S.regionIntl.s).tag("intl-personal")
+                        Text(S.regionChina.s).tag("cn-personal")
+                    }
 
-                if cookieSourceBinding.wrappedValue == "manual" {
-                    Text(S.qwenManualHelp.s)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Picker(S.cookieSource.s, selection: cookieSourceBinding) {
+                        Text(S.cookieSourceAuto.s).tag("auto")
+                        Text(S.cookieSourceManual.s).tag("manual")
+                    }
 
-                    TextEditor(text: $cookie)
-                        .font(.system(.caption, design: .monospaced))
-                        .frame(height: 110)
-                        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.secondary.opacity(0.3)))
+                    if cookieSourceBinding.wrappedValue == "auto" {
+                        Text(S.qwenAutoHelp.s)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                    Text(S.pasteHint.s)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        Button {
+                            probeImport()
+                        } label: {
+                            Label(S.importNow.s, systemImage: "arrow.down.circle")
+                        }
+                        .disabled(importing)
 
-                    HStack(spacing: 8) {
-                        Button(S.save.s) { save() }
-                            .disabled(cookie.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        Button(S.testConnection.s) { test() }
-                            .disabled(testing || cookie.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        Button(S.delete.s, role: .destructive) {
-                            Keychain.delete(Keys.qwenCookie)
-                            AppStore.PlanCache.forget("qwen")
-                            cookie = ""
-                            testMessage = nil
-                            Task {
-                                await QwenSecTokenCache.shared.invalidateAll()
-                                await MainActor.run { store.refresh() }
+                        if let importMessage {
+                            Text(importMessage)
+                                .font(.caption)
+                                .foregroundStyle(importMessage.hasPrefix(S.successPrefix) ? Color.green : Color.red)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+
+                    Button {
+                        openConsole()
+                    } label: {
+                        Label(
+                            cookieSourceBinding.wrappedValue == "auto"
+                                ? S.openTokenPlanBrowser.s
+                                : S.openTokenPlanCopy.s,
+                            systemImage: "arrow.up.right.square"
+                        )
+                    }
+                    .buttonStyle(.link)
+                    .font(.caption)
+
+                    if cookieSourceBinding.wrappedValue == "manual" {
+                        Text(S.qwenManualHelp.s)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        TextEditor(text: $cookie)
+                            .font(.system(.caption, design: .monospaced))
+                            .frame(height: 110)
+                            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.secondary.opacity(0.3)))
+
+                        Text(S.pasteHint.s)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+
+                        HStack(spacing: 8) {
+                            Button(S.save.s) { save() }
+                                .disabled(cookie.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            Button(S.testConnection.s) { test() }
+                                .disabled(testing || cookie.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            Button(S.delete.s, role: .destructive) {
+                                Keychain.delete(Keys.qwenCookie)
+                                AppStore.PlanCache.forget("qwen")
+                                cookie = ""
+                                testMessage = nil
+                                Task {
+                                    await QwenSecTokenCache.shared.invalidateAll()
+                                    await MainActor.run { store.refresh() }
+                                }
+                            }
+                            Spacer()
+                            if testing {
+                                ProgressView().controlSize(.small)
                             }
                         }
-                        Spacer()
-                        if testing {
-                            ProgressView().controlSize(.small)
-                        }
-                    }
 
-                    if let message = testMessage {
-                        Text(message)
-                            .font(.caption)
-                            .foregroundStyle(message.hasPrefix(S.successPrefix) ? Color.green : Color.red)
-                            .fixedSize(horizontal: false, vertical: true)
+                        if let message = testMessage {
+                            Text(message)
+                                .font(.caption)
+                                .foregroundStyle(message.hasPrefix(S.successPrefix) ? Color.green : Color.red)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
             }
@@ -173,15 +189,26 @@ struct SettingsView: View {
         }
     }
 
+    private func enabledBinding(_ id: String) -> Binding<Bool> {
+        Binding(
+            get: { store.isEnabled(id) },
+            set: { store.setProvider(id, enabled: $0) }
+        )
+    }
+
     private var menuBarProviderBinding: Binding<String> {
         Binding(
             get: {
                 let stored = UserDefaults.standard.string(forKey: Keys.menuBarProvider) ?? ""
-                if stored.isEmpty {
-                    // Default to the first configured provider, not the maximum.
-                    return store.snapshots.first { !$0.needsSetup }?.id ?? AppDelegate.highestValueToken
+                // The stored choice is kept even while it has no row to select —
+                // switching that service back on restores the picker to it — so
+                // fall back for display rather than rewriting the preference.
+                if stored == AppDelegate.highestValueToken
+                    || store.snapshots.contains(where: { $0.id == stored && !$0.needsSetup }) {
+                    return stored
                 }
-                return stored
+                // Default to the first configured provider, not the maximum.
+                return store.snapshots.first { !$0.needsSetup }?.id ?? AppDelegate.highestValueToken
             },
             set: { UserDefaults.standard.set($0, forKey: Keys.menuBarProvider) }
         )
