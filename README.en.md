@@ -90,6 +90,17 @@ Requires **macOS 14+** and the Xcode command line tools (`xcode-select --install
 ```bash
 git clone https://github.com/visualic/ai-limit.git
 cd ai-limit
+./Scripts/install.sh       # checks prerequisites, builds, installs, launches
+```
+
+You can hand this to an AI coding tool — cloning the repo and running
+`./Scripts/install.sh` is the whole job, and [AGENTS.md](AGENTS.md) tells it what
+it needs to know. Two dialogs still need a human: the Xcode tools installer, if
+you do not have it, and the Keychain approval below.
+
+Prefer doing it by hand:
+
+```bash
 ./Scripts/package_app.sh
 rm -rf /Applications/AILimit.app && cp -R build/AILimit.app /Applications/
 open /Applications/AILimit.app

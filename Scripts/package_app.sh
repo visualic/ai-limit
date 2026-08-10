@@ -87,4 +87,8 @@ else
 fi
 
 echo "==> Created $APP_DIR"
-echo "Install: rm -rf /Applications/AILimit.app && cp -R $APP_DIR /Applications/"
+# install.sh performs the copy itself; printing a conflicting instruction there
+# just invites someone to run it twice.
+if [[ -z "${AILIMIT_SUPPRESS_INSTALL_HINT:-}" ]]; then
+    echo "Install: rm -rf /Applications/AILimit.app && cp -R $APP_DIR /Applications/"
+fi

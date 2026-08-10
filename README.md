@@ -67,8 +67,18 @@ Cursor는 앱이 세션 토큰을 암호화 없이 로컬에 두기 때문에 �
 필요한 것: **macOS 14+**, Xcode 커맨드 라인 도구(Swift 6). `xcode-select --install`로 설치합니다.
 
 ```bash
-git clone git@github.com:visualic/ai-limit.git
+git clone https://github.com/visualic/ai-limit.git
 cd ai-limit
+./Scripts/install.sh       # 사전 조건 확인 → 빌드 → 설치 → 실행
+```
+
+AI 코딩 도구에게 맡기셔도 됩니다 — 레포를 클론하고 `./Scripts/install.sh`를 실행하라고 하면
+됩니다. 에이전트용 안내는 [AGENTS.md](AGENTS.md)에 있습니다. 다만 **다이얼로그 두 개는 사람이
+눌러야** 합니다: Xcode 도구 설치 창(없을 때)과 아래의 Keychain 승인입니다.
+
+수동으로 하시려면:
+
+```bash
 ./Scripts/package_app.sh   # build/AILimit.app 생성 + 서명
 rm -rf /Applications/AILimit.app && cp -R build/AILimit.app /Applications/
 open /Applications/AILimit.app
