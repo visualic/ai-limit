@@ -35,6 +35,9 @@ hides every other service — exactly when you most want to check them.
 - Plan badges that survive a failed refresh — the tier did not change just
   because one request timed out
 - Usage against the plan total where the API exposes it (`10,000 / 10,000`, `$11 / $20`)
+- Switch off the services you do not use, under Settings → Services: they leave the
+  popover and the menu bar and are never queried, and their setup is kept for when
+  you switch them back on
 - Money and credit facts that a percentage cannot express, shown only when the
   provider actually has them: extra-usage credits, uncapped on-demand spend,
   add-on packs

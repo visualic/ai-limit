@@ -43,7 +43,8 @@ not a regression.
 - **A provider showing `SETUP` in `--check` but working in the app.** The app has
   been granted Keychain access; the CLI binary is a different signature.
 - **The menu bar icon narrowing.** It draws one column per *configured* provider.
-  Fewer columns means fewer providers set up, not a layout fault.
+  Fewer columns means fewer providers set up — or switched off under Settings →
+  Services, which also stops them being fetched — not a layout fault.
 - **Cursor showing no bar on a Free plan.** Free reports `plan.limit: 0`; drawing
   a 0% bar would imply headroom that does not exist.
 

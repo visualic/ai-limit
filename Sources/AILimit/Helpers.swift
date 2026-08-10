@@ -13,6 +13,8 @@ enum Keys {
     static let cursorCookieAuto = "cursor-cookie-auto"
     /// Which provider's number the menu bar shows; "" means the highest value.
     static let menuBarProvider = "menuBarProvider"
+    /// Services the user switched off. See `ProviderVisibility`.
+    static let disabledProviders = "disabledProviders"
 }
 
 enum CookieExtract {
