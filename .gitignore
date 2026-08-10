@@ -1,0 +1,7 @@
+.DS_Store
+.build/
+build/
+.swiftpm/
+*.xcodeproj
+# Internal working notes; they carry personal usage details.
+tasks/
