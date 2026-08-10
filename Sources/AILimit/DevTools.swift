@@ -803,6 +803,18 @@ enum SelfTest {
             UserDefaults.standard.set(previousDisabled, forKey: Keys.disabledProviders)
         }
 
+        print("== 갱신은 기본적으로 비대화식")
+        // The bug this pins: a settings change refreshed as "user initiated",
+        // which arms an interactive Keychain read. Nobody answers an approval
+        // dialog they did not ask for, so the read parked for its whole timeout —
+        // menu bar icon spinning throughout, and the global interaction lock held
+        // long enough to freeze the Settings window that opened behind it.
+        check("기본 로스터는 Keychain 프롬프트를 켜지 않음",
+              (ProviderRoster.all().first as? ClaudeProvider)?.userInitiated == false)
+        check("Qwen도 마찬가지", (ProviderRoster.all().last as? QwenProvider)?.userInitiated == false)
+        check("명시적 사용자 동작만 대화식",
+              (ProviderRoster.all(userInitiated: true).first as? ClaudeProvider)?.userInitiated == true)
+
         print("== 요금제 배지 유지")
         let probe = CursorProvider()
         AppStore.PlanCache.forget(probe.id)

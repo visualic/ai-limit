@@ -184,8 +184,25 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 540)
-        .onAppear {
-            cookie = Keychain.load(Keys.qwenCookie, allowInteraction: true) ?? ""
+        .onAppear { loadManualCookie() }
+    }
+
+    /// Loads the saved manual cookie without blocking the window open.
+    ///
+    /// Reading it takes the process-global Keychain interaction lock, which a
+    /// refresh already waiting on an approval dialog holds for its whole timeout.
+    /// Doing that synchronously in `onAppear` froze the main thread — measured at
+    /// 8.9s — so Settings painted half laid out and stayed that way. It is also
+    /// only needed for the manual source: an auto-import user has no manual cookie
+    /// to show and should not be made to answer a Keychain prompt to be told so.
+    private func loadManualCookie() {
+        guard cookieSourceBinding.wrappedValue == "manual", cookie.isEmpty else { return }
+        Task {
+            let saved = await Keychain.loadAsync(Keys.qwenCookie, allowInteraction: true, timeout: 10)
+            await MainActor.run {
+                // Never overwrite something typed while the read was in flight.
+                if let saved, cookie.isEmpty { cookie = saved }
+            }
         }
     }
 
@@ -247,6 +264,9 @@ struct SettingsView: View {
             set: {
                 UserDefaults.standard.set($0, forKey: Keys.qwenCookieSource)
                 importMessage = nil
+                // The field only exists once manual is chosen, so this is where
+                // the saved cookie is fetched — onAppear skipped it.
+                loadManualCookie()
                 store.refresh(userInitiated: true)
             }
         )

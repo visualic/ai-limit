@@ -42,14 +42,20 @@ final class AppStore: ObservableObject {
             ProviderVisibility.disabledIDs = disabledProviderIDs
             snapshots.removeAll { disabledProviderIDs.contains($0.id) }
             saveCache()
-            refresh(userInitiated: true)
+            // Deliberately not user-initiated: flipping a switch is not consent to
+            // a Keychain approval dialog, and an interactive credential read that
+            // nobody answers parks for its whole timeout with the icon spinning.
+            refresh()
         }
     }
 
     private var timer: Timer?
-    /// A refresh asked for while one was already running. Timer ticks stay
-    /// drop-on-busy — another tick is due shortly — but a settings change must
-    /// not wait a whole interval to take effect.
+    /// A refresh asked for while one was already running.
+    ///
+    /// Dropping it outright meant a settings change waited a whole interval to
+    /// show up. It re-runs non-interactively whatever asked for it: starting a
+    /// second interactive cycle would stack another credential-prompt wait on top
+    /// of the one still running.
     private var queuedRefresh = false
 
     init() {
@@ -80,7 +86,7 @@ final class AppStore: ObservableObject {
     /// backoff; a timer tick may not.
     func refresh(userInitiated: Bool = false) {
         guard !isRefreshing else {
-            if userInitiated { queuedRefresh = true }
+            queuedRefresh = true
             return
         }
         isRefreshing = true
@@ -105,7 +111,7 @@ final class AppStore: ObservableObject {
             self.saveCache()
             if self.queuedRefresh {
                 self.queuedRefresh = false
-                self.refresh(userInitiated: true)
+                self.refresh()
             }
         }
     }
